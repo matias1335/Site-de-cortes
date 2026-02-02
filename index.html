@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Cortes Virais Pro</title>
+
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+
+<style>
+body{
+  background:#0b0b0f;
+  color:#fff;
+  font-family:Inter,Arial;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+}
+.app{
+  width:360px;
+  background:#151521;
+  padding:20px;
+  border-radius:18px;
+  box-shadow:0 0 40px rgba(255,0,85,.3);
+}
+h2{text-align:center;margin-bottom:15px}
+input,button{
+  width:100%;
+  margin:8px 0;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+}
+input{background:#1e1e2e;color:#fff}
+button{
+  background:#ff0055;
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
+}
+video{
+  width:100%;
+  margin-top:15px;
+  border-radius:12px;
+}
+small{
+  opacity:.6;
+  display:block;
+  text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+<h2>🎬 Cortes Virais</h2>
+
+<input type="file" id="video" accept="video/*">
+<input type="text" id="texto" placeholder="Digite a legenda">
+
+<button onclick="gerar()">Gerar corte viral</button>
+
+<video id="preview" controls></video>
+<small>Legenda animada • Formato 9:16</small>
+</div>
+
+<script>
+const { createFFmpeg, fetchFile } = FFmpeg
+const ffmpeg = createFFmpeg({ log:false })
+
+async function gerar(){
+  const video = document.getElementById('video').files[0]
+  const texto = document.getElementById('texto').value
+
+  if(!video || !texto) return alert("Envie um vídeo e a legenda")
+
+  if(!ffmpeg.isLoaded()) await ffmpeg.load()
+
+  ffmpeg.FS('writeFile','input.mp4', await fetchFile(video))
+
+  const palavras = texto.split(" ")
+  let filtros = palavras.map((p,i)=>{
+    return `drawtext=text='${p}':fontsize=60:fontcolor=white:x=(w-text_w)/2:y=h-220:
+    box=1:boxcolor=black@0.6:enable='between(t,${i*0.6},${(i+1)*0.6})'`
+  }).join(",")
+
+  await ffmpeg.run(
+    "-i","input.mp4",
+    "-vf",`
+      crop=ih*9/16:ih,
+      ${filtros}
+    `,
+    "-t","15",
+    "out.mp4"
+  )
+
+  const data = ffmpeg.FS('readFile','out.mp4')
+  const url = URL.createObjectURL(new Blob([data.buffer],{type:"video/mp4"}))
+  document.getElementById('preview').src = url
+}
+</script>
+
+</body>
+</html>
